@@ -62,12 +62,6 @@ PORT    STATE SERVICE    VERSION
 Service Info: Host: 127.0.1.1; OS: Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
-From this scan, we see that:
-- FTP (vsftpd 2.0.8 or later) is running on port 21.
-- SSH (OpenSSH 5.9p1) is on port 22.
-- HTTP and HTTPS are served by Apache 2.2.22 (Ubuntu) on ports 80 and 443, respectively.
-- IMAP and IMAPS services are handled by Dovecot.
-
 ## 3. Directory Fuzzing with FFUF
 
 ### HTTP Enumeration
@@ -167,7 +161,6 @@ Best regards.
 ### Database
 
 In the **phpMyAdmin** interface, we find a database containing a table named **userdata**, which holds the forum users and their passwords. Among the users, there is an **admin** account with the following password hash: 
-
 `ed0fd64f25f3bd3a54f8d272ba93b6e76ce7f3d0516d551c28`.
 
 ### Crack the Admin Password
@@ -268,7 +261,6 @@ While exploring the `/home` directory, we notice a folder named **LOOKATME** own
 ```bash
 $ cat password
 lmezard:G!@M6f4Eatau{sF"
-G!@M6f4Eatau{sF"
 ```
 
 We attempt to use these credentials to connect via **SSH**, but they don’t work. However, when we try logging into **FTP**, it works!
@@ -387,8 +379,11 @@ To complete the challenge, we are asked to hash the password using the **SHA-256
 xel@lucky7 ~/files/42/boot2root/ % echo -n "Iheartpwnage" | sha256sum
 330b845f32185747e4f8ca15d40ca59796035c89ea809fb5d30f4da83ecf45a4
 
-xel@lucky7 ~/files/42/boot2root/ % ssh laurie@192.168.0.31
+xel@lucky7 ~/files/42@BornToSecHackMe:~$/boot2root/ % ssh laurie@192.168.0.31
 laurie@192.168.0.31's password:
 
 laurie@BornToSecHackMe:~$
 ```
+
+## 8. Laurie to root
+
