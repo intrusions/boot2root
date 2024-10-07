@@ -385,8 +385,6 @@ laurie@192.168.0.31's password:
 laurie@BornToSecHackMe:~$
 ```
 
-Here’s the continuation of your write-up with the section on solving the bomb challenge and gaining access to the `thor` user:
-
 ## 9. laurie session
 
 After gaining laurie access, we explore Laurie’s home directory and find two files: **bomb** and **README**.
@@ -458,6 +456,111 @@ Password:
 thor@BornToSecHackMe:~$
 ```
 
-We have successfully gained access to the **thor** user!
-
 ## 10. thor session
+
+After logging in as the **thor** user, we find two files in the home directory: **README** and **turtle**.
+
+```bash
+thor@BornToSecHackMe:~$ ls
+README  turtle
+
+thor@BornToSecHackMe:~$ cat README 
+Finish this challenge and use the result as password for 'zaz' user.
+```
+
+The **README** informs us that solving this challenge will give us the password for the **zaz** user.
+
+Next, we inspect the **turtle** file:
+
+```bash
+thor@BornToSecHackMe:~$ file turtle 
+turtle: ASCII text
+
+thor@BornToSecHackMe:~$ cat turtle | head -n 10
+Tourne gauche de 90 degrees
+Avance 50 spaces
+Avance 1 spaces
+Tourne gauche de 1 degrees
+Avance 1 spaces
+Tourne gauche de 1 degrees
+Avance 1 spaces
+Tourne gauche de 1 degrees
+Avance 1 spaces
+Tourne gauche de 1 degrees
+```
+
+The **turtle** file contains instructions, such as moving forward, turning left, or turning right by a specific number of degrees or spaces. The name "turtle" hints at the use of **Turtle Graphics**, a Python library that allows drawing based on commands.
+
+### Solving the Turtle Challenge
+
+To visualize the instructions in the **turtle** file, we write a Python script that reads the file and executes the instructions using the **turtle** module.
+
+Here’s the Python script:
+
+```python
+import turtle
+import re
+
+def parse_line(line, turtle_obj):
+    forward_value = re.match(r"Avance (\d+) spaces", line)
+    backward_value = re.match(r"Recule (\d+) spaces", line)
+    left_value = re.match(r"Tourne gauche de (\d+) degrees", line)
+    right_value = re.match(r"Tourne droite de (\d+) degrees", line)
+
+    if forward_value:
+        value = int(forward_value.group(1))
+        turtle_obj.forward(value)
+    elif backward_value:
+        value = int(backward_value.group(1))
+        turtle_obj.backward(value)
+    elif left_value:
+        value = int(left_value.group(1))
+        turtle_obj.left(value)
+    elif right_value:
+        value = int(right_value.group(1))
+        turtle_obj.right(value)
+
+def parse_file_to_turtle():
+    screen = turtle.Screen()
+    screen.setup(1000, 1000)
+    t = turtle.Turtle()
+
+    with open('turtle', 'r') as f:
+        content = f.readlines()
+
+    for line in content:
+        parse_line(line, t)
+
+    turtle.done()
+
+parse_file_to_turtle()
+```
+
+### Interpreting the Result
+
+This Python script reads each line of the **turtle** file and interprets the instructions, using the **turtle** graphics library to draw the path on the screen. When the script is run, it visually draws the result of the instructions.
+
+After running the script, we see that the drawn output reveals the message: **SLASH**.
+
+The last line of the **turtle** file reads:
+
+
+```
+Can you digest the message? :)
+```
+
+This line hints that we need to **digest** (i.e., hash) the message **SLASH** to proceed. After testing several hashing algorithms, we find that the correct one is **MD5**.
+
+Hashing the message **SLASH** with MD5 gives us the following hash:
+
+```bash
+echo -n "SLASH" | md5sum
+646da671ca01bb5d84dbb5fb2238dc8e
+
+thor@BornToSecHackMe:~$ su zaz
+Password: 
+
+zaz@BornToSecHackMe:~$
+```
+
+## 11. zaz session
