@@ -301,7 +301,7 @@ local: README remote: README
 The **README** file contains a challenge that must be completed to unlock further access:
 
 ```bash
-xel@lucky7 ~/files/42/boot2root % CAT README
+xel@lucky7 ~/files/42/boot2root % cat README
 Complete this little challenge and use the result as password for user 'laurie' to login in ssh
 ```
 
@@ -325,10 +325,10 @@ Each of the 750 files follows a similar structure:
 xel@lucky7 ~/files/42/boot2root/ft_fun % cat 0564G.pcap 
 }void useless() {
 
-//file355%
+//file355
 ```
 
-It becomes apparent that each file contains a small fragment of C code, and they all have comments indicating their position (e.g., `//file355%`). Our task is to reconstruct the full C program by piecing together the fragments in the correct order based on these comments.
+It becomes apparent that each file contains a small fragment of C code, and they all have comments indicating their position (e.g., `//file355`). Our task is to reconstruct the full C program by piecing together the fragments in the correct order based on these comments.
 
 ## 8. Rebuilding the Code
 
@@ -385,5 +385,79 @@ laurie@192.168.0.31's password:
 laurie@BornToSecHackMe:~$
 ```
 
-## 8. Laurie to root
+Here’s the continuation of your write-up with the section on solving the bomb challenge and gaining access to the `thor` user:
 
+## 9. laurie session
+
+After gaining laurie access, we explore Laurie’s home directory and find two files: **bomb** and **README**.
+
+```bash
+laurie@BornToSecHackMe:~$ ls
+bomb  README
+
+laurie@BornToSecHackMe:~$ file bomb
+bomb: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.0.0, not stripped
+```
+
+The **bomb** file is a 32-bit ELF binary, meaning it’s an executable file. Let’s read the **README** for instructions:
+
+```bash
+laurie@BornToSecHackMe:~$ cat README 
+Diffuse this bomb!
+When you have all the password use it as "thor" user with ssh.
+
+HINT:
+P
+ 2
+ b
+
+o
+4
+
+NO SPACE IN THE PASSWORD (password is case sensitive).
+```
+
+The **README** gives us a hint about diffusing the bomb and indicates that the password we extract from it should be used to log in as the **thor** user via SSH.
+
+### Reversing the Binary with Binary Ninja
+
+Upon reverse engineering the **bomb** binary with **Binary Ninja**, we find that the program consists of 6 levels. Each level expects a specific string input, which we need to figure out by analyzing the binary. Once all the strings are entered correctly, we will have the complete password to log in as **thor**.
+
+#### Phase 1:
+The expected input is a string: `Public speaking is very easy.`
+
+#### Phase 2:
+The input is a sequence of factorials: `1 2 6 24 120 720`
+
+#### Phase 3:
+The input is a number, a char and another number: `1 b 214`
+
+#### Phase 4:
+The correct input is the number `9`.
+
+#### Phase 5:
+The input is a string: `opukmq`
+
+#### Phase 6:
+The input is a number sequence: `4 2 6 3 1 5`
+
+### Concatenating the Password
+
+To derive the password for the **thor** user, we concatenate the correct strings from all phases, following the hint in the **README** about no spaces in the password:
+
+**Password for thor:**
+```
+Publicspeakingisveryeasy.126241207201b2149opekmq426135
+```
+
+Now that we have the password, we switch to the **thor** user:
+
+```bash
+laurie@BornToSecHackMe:~$ su thor
+Password: 
+thor@BornToSecHackMe:~$
+```
+
+We have successfully gained access to the **thor** user!
+
+## 10. thor session
