@@ -11,7 +11,7 @@ Linux BornToSecHackMe 3.2.0-91-generic-pae #129-Ubuntu SMP Wed Sep 9 11:27:47 UT
 
 The output reveals that the system is running on a 32-bit version of Ubuntu with kernel version `3.2.0-91`. A quick Google search shows that this kernel version is vulnerable to a well-known **Local Privilege Escalation** exploit known as **[CVE-2016-5195](https://nvd.nist.gov/vuln/detail/cve-2016-5195)** (Dirty COW). This vulnerability affects Linux kernel versions from `2.x` to `4.x` before `4.8.3` and allows an unprivileged user to gain root privileges by exploiting a race condition.
 
-### 8. Exploiting Dirty COW
+## 8. Exploiting Dirty COW
 
 To exploit this vulnerability, we will use an existing exploit written in C, which we can download and modify to escalate privileges.
 

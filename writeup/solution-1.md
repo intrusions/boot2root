@@ -564,3 +564,22 @@ zaz@BornToSecHackMe:~$
 ```
 
 ## 11. zaz session
+
+After logging in as the **zaz** user, we find an **exploit_me** binary in the home directory.
+
+### Reversing the Binary with Binary Ninja
+
+```c
+080483f4  int32_t main(int32_t argc, char** argv, char** envp)
+080483f4  {
+08048404      if (argc <= 1)
+08048406          return 1;
+08048406      
+08048420      void str;
+08048420      strcpy(&str, argv[1]);
+0804842c      puts(&str);
+08048431      return 0;
+080483f4  }
+
+```
+
